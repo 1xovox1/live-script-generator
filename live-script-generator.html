@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直播脚本生成工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6', // 主色调：蓝色（信任、专业）
+                        secondary: '#F97316', // 辅助色：橙色（活力、促销）
+                        neutral: {
+                            100: '#F3F4F6',
+                            200: '#E5E7EB',
+                            700: '#374151',
+                            900: '#111827'
+                        }
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-all-300 {
+                transition: all 300ms ease-in-out;
+            }
+            .shadow-hover {
+                transition: all 0.3s ease;
+            }
+            .shadow-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-md fixed top-0 w-full z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-comment text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-neutral-900">鹏泰电商 - 直播脚本生成工具</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="helpBtn" class="text-neutral-700 hover:text-primary transition-all-300">
+                    <i class="fa-solid fa-question-circle mr-1"></i>帮助
+                </button>
+                <button id="saveTemplateBtn" class="text-neutral-700 hover:text-primary transition-all-300">
+                    <i class="fa-solid fa-save mr-1"></i>保存模板
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 pt-24 pb-16">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左侧控制面板 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 直播基本设置 -->
+                <div class="bg-white rounded-xl shadow-lg p-6 space-y-4">
+                    <h2 class="text-lg font-semibold text-neutral-900 flex items-center">
+                        <i class="fa-solid fa-sliders text-primary mr-2"></i>直播设置
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">直播平台</label>
+                            <select id="platform" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                                <option value="douyin">抖音</option>
+                                <option value="taobao">淘宝</option>
+                                <option value="kuaishou">快手</option>
+                                <option value="video号">视频号</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">流量场景</label>
+                            <select id="trafficType" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                                <option value="high">高流量</option>
+                                <option value="normal">正常流量</option>
+                                <option value="low">低流量</option>
+                                <option value="burst">突发流量</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">内容类型</label>
+                            <select id="contentType" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                                <option value="newProduct">新品推广</option>
+                                <option value="clearance">清仓促销</option>
+                                <option value="brand">品牌宣传</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">目标人群</label>
+                            <select id="targetAudience" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                                <option value="new">新用户</option>
+                                <option value="old">老用户</option>
+                                <option value="vip">高净值用户</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">话术风格</label>
+                            <div class="flex space-x-3">
+                                <label class="flex items-center">
+                                    <input type="radio" name="style" value="natural" checked class="w-4 h-4 text-primary focus:ring-primary border-neutral-300">
+                                    <span class="ml-2 text-sm text-neutral-700">自然不夸张</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="style" value="professional" class="w-4 h-4 text-primary focus:ring-primary border-neutral-300">
+                                    <span class="ml-2 text-sm text-neutral-700">专业可靠</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 模块选择 -->
+                <div class="bg-white rounded-xl shadow-lg p-6 space-y-4">
+                    <h2 class="text-lg font-semibold text-neutral-900 flex items-center">
+                        <i class="fa-solid fa-puzzle-piece text-primary mr-2"></i>脚本模块选择
+                    </h2>
+                    
+                    <div id="moduleSelector" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <label class="flex items-center p-3 border border-neutral-200 rounded-lg shadow-hover cursor-pointer group">
+                            <input type="checkbox" value="intro" class="w-5 h-5 text-primary focus:ring-primary border-neutral-300 rounded">
+                            <span class="ml-3 text-neutral-700 group-hover:text-primary transition-colors">开场模块</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-neutral-200 rounded-lg shadow-hover cursor-pointer group">
+                            <input type="checkbox" value="painPoint" class="w-5 h-5 text-primary focus:ring-primary border-neutral-300 rounded">
+                            <span class="ml-3 text-neutral-700 group-hover:text-primary transition-colors">痛点模块</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-neutral-200 rounded-lg shadow-hover cursor-pointer group">
+                            <input type="checkbox" value="product" class="w-5 h-5 text-primary focus:ring-primary border-neutral-300 rounded">
+                            <span class="ml-3 text-neutral-700 group-hover:text-primary transition-colors">产品模块</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-neutral-200 rounded-lg shadow-hover cursor-pointer group">
+                            <input type="checkbox" value="comparison" class="w-5 h-5 text-primary focus:ring-primary border-neutral-300 rounded">
+                            <span class="ml-3 text-neutral-700 group-hover:text-primary transition-colors">对比模块</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-neutral-200 rounded-lg shadow-hover cursor-pointer group">
+                            <input type="checkbox" value="demo" class="w-5 h-5 text-primary focus:ring-primary border-neutral-300 rounded">
+                            <span class="ml-3 text-neutral-700 group-hover:text-primary transition-colors">演示模块</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-neutral-200 rounded-lg shadow-hover cursor-pointer group">
+                            <input type="checkbox" value="trust" class="w-5 h-5 text-primary focus:ring-primary border-neutral-300 rounded">
+                            <span class="ml-3 text-neutral-700 group-hover:text-primary transition-colors">信任模块</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-neutral-200 rounded-lg shadow-hover cursor-pointer group">
+                            <input type="checkbox" value="promotion" class="w-5 h-5 text-primary focus:ring-primary border-neutral-300 rounded">
+                            <span class="ml-3 text-neutral-700 group-hover:text-primary transition-colors">促销模块</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-neutral-200 rounded-lg shadow-hover cursor-pointer group">
+                            <input type="checkbox" value="interactive" class="w-5 h-5 text-primary focus:ring-primary border-neutral-300 rounded">
+                            <span class="ml-3 text-neutral-700 group-hover:text-primary transition-colors">互动模块</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-neutral-200 rounded-lg shadow-hover cursor-pointer group">
+                            <input type="checkbox" value="ending" class="w-5 h-5 text-primary focus:ring-primary border-neutral-300 rounded">
+                            <span class="ml-3 text-neutral-700 group-hover:text-primary transition-colors">结尾模块</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 产品与权益设置 -->
+                <div class="bg-white rounded-xl shadow-lg p-6 space-y-4">
+                    <h2 class="text-lg font-semibold text-neutral-900 flex items-center">
+                        <i class="fa-solid fa-shopping-bag text-primary mr-2"></i>产品与权益设置
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">主推产品</label>
+                            <input type="text" id="mainProduct" placeholder="例如：冬季羽绒服" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">主推产品卖点（可多行，用逗号分隔）</label>
+                            <textarea id="mainProductFeatures" rows="3" placeholder="例如：轻便,保暖,防水,修身" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">附推产品</label>
+                            <input type="text" id="secondaryProduct" placeholder="例如：冬季围巾" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">附推产品卖点</label>
+                            <input type="text" id="secondaryProductFeatures" placeholder="例如：百搭,柔软,赠品搭配" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h3 class="text-sm font-medium text-neutral-700 mb-2">优惠券设置</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" id="couponValue" placeholder="面额" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                                <input type="text" id="couponCondition" placeholder="领取条件" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-sm font-medium text-neutral-700 mb-2">赠品设置</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" id="giftName" placeholder="赠品名称" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                                <input type="text" id="giftCondition" placeholder="赠送条件" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-sm font-medium text-neutral-700 mb-2">限时折扣</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" id="discount" placeholder="折扣力度" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                                <input type="text" id="discountTime" placeholder="时间范围" class="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all-300">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 生成按钮 -->
+                <button id="generateScriptBtn" class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-all-300 shadow-lg hover:shadow-xl flex items-center justify-center">
+                    <i class="fa-solid fa-magic mr-2"></i>生成直播脚本
+                </button>
+            </div>
+            
+            <!-- 右侧脚本展示区 -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- 脚本信息卡片 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-neutral-900 flex items-center">
+                            <i class="fa-solid fa-file-text text-primary mr-2"></i>直播脚本预览
+                        </h2>
+                        <div class="flex space-x-2">
+                            <button id="exportExcelBtn" class="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white rounded-lg transition-all-300 shadow-hover flex items-center">
+                                <i class="fa-solid fa-file-excel mr-1"></i>导出Excel
+                            </button>
+                            <button id="printBtn" class="px-4 py-2 bg-neutral-700 hover:bg-neutral-800 text-white rounded-lg transition-all-300 shadow-hover flex items-center">
+                                <i class="fa-solid fa-print mr-1"></i>打印
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 脚本信息概览 -->
+                    <div id="scriptInfo" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-neutral-100 rounded-lg">
+                        <div>
+                            <p class="text-sm text-neutral-700">直播平台</p>
+                            <p id="infoPlatform" class="font-medium text-neutral-900">抖音</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-neutral-700">流量场景</p>
+                            <p id="infoTraffic" class="font-medium text-neutral-900">高流量</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-neutral-700">内容类型</p>
+                            <p id="infoContent" class="font-medium text-neutral-900">新品推广</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-neutral-700">目标人群</p>
+                            <p id="infoAudience" class="font-medium text-neutral-900">新用户</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-neutral-700">话术风格</p>
+                            <p id="infoStyle" class="font-medium text-neutral-900">自然不夸张</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-neutral-700">生成时间</p>
+                            <p id="infoTime" class="font-medium text-neutral-900">2025-05-23 15:30</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 脚本表格 -->
+                    <div class="overflow-x-auto">
+                        <table id="scriptTable" class="min-w-full divide-y divide-neutral-200">
+                            <thead class="bg-neutral-100">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">模块</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">话术内容</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">执行时间</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">互动动作</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">权益提示</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scriptTableBody" class="bg-white divide-y divide-neutral-200">
+                                <!-- 脚本内容将在这里动态生成 -->
+                                <tr class="text-center">
+                                    <td colspan="5" class="px-6 py-12 text-neutral-500">请点击左侧"生成直播脚本"按钮创建脚本</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 使用提示 -->
+                <div class="bg-primary/10 border border-primary/20 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-primary mb-3 flex items-center">
+                        <i class="fa-solid fa-lightbulb mr-2"></i>使用提示
+                    </h3>
+                    <ul class="space-y-2 text-neutral-700">
+                        <li class="flex items-start">
+                            <i class="fa-solid fa-check-circle text-primary mt-1 mr-2"></i>
+                            <span>根据直播需求选择合适的模块组合，系统会自动生成连贯的话术</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa-solid fa-check-circle text-primary mt-1 mr-2"></i>
+                            <span>不同的流量场景会应用不同的策略（如高流量强调库存紧张，低流量增加知识科普）</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa-solid fa-check-circle text-primary mt-1 mr-2"></i>
+                            <span>生成脚本后，可点击"导出Excel"按钮保存为表格文件</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa-solid fa-check-circle text-primary mt-1 mr-2"></i>
+                            <span>支持保存常用模板，下次直播可快速复用</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-neutral-200 py-6">
+        <div class="container mx-auto px-4 text-center text-neutral-500 text-sm">
+            <p>© 2025 鹏泰电商 - 直播脚本生成工具 | 设计与开发</p>
+        </div>
+    </footer>
+
+    <!-- 帮助模态框 -->
+    <div id="helpModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-neutral-200 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-neutral-900">使用帮助</h3>
+                <button id="closeHelpModal" class="text-neutral-500 hover:text-neutral-700">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <h4 class="font-medium text-neutral-900 mb-2">如何使用直播脚本生成工具？</h4>
+                    <ol class="list-decimal pl-5 space-y-2 text-neutral-700">
+                        <li>在左侧面板设置直播基本参数（平台、流量场景等）</li>
+                        <li>选择需要的脚本模块（如开场、产品展示等）</li>
+                        <li>填写产品信息和权益设置</li>
+                        <li>点击"生成直播脚本"按钮</li>
+                        <li>在右侧预览生成的脚本，可导出为Excel或打印</li>
+                    </ol>
+                </div>
+                <div>
+                    <h4 class="font-medium text-neutral-900 mb-2">流量场景如何影响脚本生成？</h4>
+                    <ul class="list-disc pl-5 space-y-2 text-neutral-700">
+                        <li><strong>高流量</strong>：增加紧迫感话术，强调库存有限和限时优惠</li>
+                        <li><strong>低流量</strong>：增加知识科普和互动环节，提高观众留存</li>
+                        <li><strong>突发流量</strong>：快速展示核心卖点和最大福利，吸引转化</li>
+                        <li><strong>正常流量</strong>：平衡产品介绍和促销信息</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-medium text-neutral-900 mb-2">如何优化生成的脚本？</h4>
+                    <p class="text-neutral-700">生成脚本后，您可以：</p>
+                    <ul class="list-disc pl-5 space-y-2 text-neutral-700">
+                        <li>根据实际产品特性微调话术内容</li>
+                        <li>调整模块顺序以适应直播节奏</li>
+                        <li>保存常用模板，下次直播时直接加载</li>
+                        <li>针对不同产品创建专属模板库</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="p-6 border-t border-neutral-200 flex justify-end">
+                <button id="confirmHelpModal" class="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-all-300">
+                    我知道了
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模块话术库
+        const moduleScripts = {
+            intro: {
+                high: {
+                    new: "欢迎新进直播间的家人们！鹏泰电商官方直播间今天首发新款羽绒服，前50名下单立减100！点关注领5元无门槛券，不会操作的扣‘1’我教你~",
+                    old: "老粉们又见面啦！今天给大家带来咱们冬季新款羽绒服，会员专享8折，下单就送去年爆款围巾！扣‘666’领取专属优惠券~",
+                    vip: "欢迎VIP家人们！今天这款限量版羽绒服全球仅500件，直播间专属9折，前20名下单送定制皮箱！"
+                },
+                normal: {
+                    new: "家人们好，这里是鹏泰电商官方直播间！今天给大家带来一款超保暖的羽绒服，开播福利5元无门槛券，关注主播就能领！",
+                    old: "欢迎回到直播间的老粉们！今天上新款啦，老客专享满200减30，记得领券再下单哦~",
+                    vip: "尊贵的VIP会员们，今天为您准备了限量羽绒服，专属客服一对一服务，有任何问题随时联系~"
+                },
+                low: {
+                    new: "刚开播，欢迎家人们！今天给大家详细介绍我们这款羽绒服，保暖性是普通羽绒服的3倍，点关注领券立减10元！",
+                    old: "老粉们，人少咱们福利不少！今天下单新款羽绒服，额外送一条围巾，仅限直播间前10名哦！",
+                    vip: "VIP家人们，现在人不多，我们可以详细聊聊您对羽绒服的需求，定制款也可以哦~"
+                },
+                burst: {
+                    new: "刚被平台推流了！感谢新进来的家人们，这款羽绒服日常价1299，今天直播间699还送围巾！左上角点关注领券立减50！",
+                    old: "流量爆了！老粉们帮忙分享直播间，新款羽绒服老客专享5折，库存有限先到先得！",
+                    vip: "流量突然来了！VIP家人们抓紧时间，限量款羽绒服只剩10件，下单额外送价值399的护理套装！"
+                }
+            },
+            painPoint: {
+                high: {
+                    new: "家人们冬天是不是总烦恼羽绒服又厚又臃肿？这款羽绒服采用新型羽绒，同等保暖度减重30%，穿上像没穿一样轻！",
+                    old: "老粉们都知道，普通羽绒服穿一年就不保暖了！咱们这款采用进口白鸭绒，5年不跑绒不变形，买一次穿5年！",
+                    vip: "VIP们对品质要求高，这款羽绒服的面料经过1000次摩擦测试，不起球不褪色，彰显您的尊贵身份~"
+                },
+                normal: {
+                    new: "有没有家人一到冬天就手脚冰凉？这款羽绒服的锁温技术能让您的体温提升3度，告别寒冷冬天！",
+                    old: "老粉们还记得去年你们抱怨羽绒服袖口易脏吗？今年我们做了升级，可拆卸袖口设计，清洗超方便！",
+                    vip: "VIP家人们注重细节，这款羽绒服的拉链采用YKK定制款，顺滑耐用，彰显品质~"
+                },
+                low: {
+                    new: "很多家人买羽绒服担心不保暖，我们这款经过专业检测，在-20℃环境下依然能保持舒适温度！",
+                    old: "老粉们反馈之前的羽绒服透气性差，这款特别添加了透气孔设计，运动出汗也不会闷~",
+                    vip: "VIP们对剪裁要求高，这款羽绒服采用3D立体剪裁，修身不紧绷，商务休闲两相宜~"
+                },
+                burst: {
+                    new: "新进来的家人注意了！普通羽绒服穿起来像米其林轮胎人，咱们这款超轻超薄，保暖性却是普通羽绒服的2倍！",
+                    old: "流量突然来了，老粉们都知道之前的羽绒服洗几次就不蓬松了，这款采用防洗工艺，水洗10次依然蓬松！",
+                    vip: "VIP家人们，这款羽绒服的填充物经过严格筛选，含绒量高达95%，市面上很少见的高品质！"
+                }
+            },
+            product: {
+                high: {
+                    new: "看这款羽绒服！进口白鸭绒填充，防水防风面料，修身版型，日常价1299，今天直播间不要1000，不要800，只要699！前100名下单再送价值299的围巾！",
+                    old: "老粉们看过来！新款羽绒服比去年的更轻便更保暖，会员价只要599，下单就送去年爆款围巾，数量有限先到先得！",
+                    vip: "VIP专属款来了！这款限量羽绒服全球仅500件，直播间专属9折，前20名下单送定制皮箱，彰显您的尊贵身份！"
+                },
+                normal: {
+                    new: "这款羽绒服采用进口白鸭绒，保暖性超强，而且修身版型，穿上秒变时尚达人！今天直播间福利价799，比官网便宜300！",
+                    old: "老粉们，新款羽绒服升级了面料，更防水更耐磨，老客专享价699，还送一条围巾，多买多送！",
+                    vip: "VIP家人们，这款定制款羽绒服采用顶级面料，手工缝制，专属编号，彰显您的独特品味，直播间专属8折！"
+                },
+                low: {
+                    new: "给大家详细介绍这款羽绒服，进口白鸭绒填充，含绒量90%，防水防风面料，修身版型，日常价1299，今天直播间799，关注主播再减50！",
+                    old: "老粉们，咱们新款羽绒服比去年更轻便，保暖性提升20%，老客专享699，下单送围巾，前10名额外送手套！",
+                    vip: "VIP家人们，这款限量版羽绒服全球仅100件，直播间专属8.5折，下单送高级护理套装，数量有限！"
+                },
+                burst: {
+                    new: "刚被平台推流，给新进来的家人们上福利！这款羽绒服日常价1299，今天直播间699，前50名下单再送围巾，库存有限赶紧抢！",
+                    old: "流量爆了！老粉们帮忙分享直播间，新款羽绒服老客专享5折，只有30件库存，抢完恢复原价！",
+                    vip: "流量突然来了！VIP家人们抓紧时间，限量款羽绒服只剩10件，下单额外送价值399的护理套装，手慢无！"
+                }
+            },
+            comparison: {
+                high: {
+                    new: "家人们看一下对比，普通羽绒服穿起来又厚又臃肿，咱们这款超轻超薄，保暖性却是它的2倍！而且防水防风，下雨天也能穿！",
+                    old: "老粉们还记得去年买的某品牌羽绒服吗？洗几次就不蓬松了，咱们这款采用防洗工艺，水洗10次依然蓬松如新！",
+                    vip: "VIP们对品质要求高，市面上普通羽绒服含绒量70%，咱们这款含绒量95%，而且经过严格筛选，品质远超同行！"
+                },
+                normal: {
+                    new: "和市面上普通羽绒服对比，咱们这款更轻便更保暖，而且修身版型，穿上秒变时尚达人！价格还比他们便宜300！",
+                    old: "老粉们对比一下，咱们新款羽绒服比去年的更轻便，保暖性提升20%，而且增加了透气孔设计，运动出汗也不会闷！",
+                    vip: "VIP家人们，对比一下其他品牌的羽绒服，咱们这款采用顶级面料，手工缝制，品质和设计都更胜一筹！"
+                },
+                low: {
+                    new: "给大家做个对比，这是普通羽绒服，这是咱们的羽绒服，明显能看出咱们的更轻薄，保暖性却更强！今天直播间价格超划算，不要错过！",
+                    old: "老粉们对比一下，咱们新款羽绒服的拉链采用YKK定制款，顺滑耐用，比普通拉链好太多了！老客专享价更划算！",
+                    vip: "VIP家人们，对比一下其他品牌的高端羽绒服，咱们这款的填充物经过严格筛选，含绒量高达95%，而且价格更亲民！"
+                },
+                burst: {
+                    new: "刚被平台推流，给新进来的家人们看一下对比！普通羽绒服穿起来像米其林轮胎人，咱们这款超轻超薄，保暖性却是它的2倍！今天直播间699，赶紧抢！",
+                    old: "流量爆了！老粉们帮忙对比一下，咱们新款羽绒服比去年的更轻便更保暖，老客专享5折，只有30件库存，抢完恢复原价！",
+                    vip: "流量突然来了！VIP家人们抓紧对比，市面上同品质的羽绒服至少3000+，咱们直播间只要1999，还送高级护理套装！"
+                }
+            },
+            demo: {
+                high: {
+                    new: "家人们看我演示，这是一杯热水，倒在普通羽绒服上马上渗透，倒在咱们羽绒服上完全没事！而且这个羽绒服非常轻便，我一只手就能提起来！",
+                    old: "老粉们看演示，这是咱们羽绒服的填充物，蓬松度非常好，而且经过防洗处理，水洗10次依然蓬松！",
+                    vip: "VIP家人们，看这个细节，咱们羽绒服的拉链采用YKK定制款，顺滑耐用，我拉100次都不会坏！"
+                },
+                normal: {
+                    new: "给大家演示一下，这是咱们羽绒服的防水性能，水倒上去直接滑落，下雨天也能穿！而且这个羽绒服非常修身，我穿起来是不是很好看？",
+                    old: "老粉们看，这是咱们新款羽绒服的可拆卸袖口，脏了直接拆下来清洗，非常方便！",
+                    vip: "VIP家人们，看这个定制款的专属编号，每一件都是独一无二的，彰显您的独特品味！"
+                },
+                low: {
+                    new: "家人们看演示，这是普通羽绒服和咱们羽绒服的保暖对比，放在同样的低温环境下，咱们的温度明显更高！",
+                    old: "老粉们看，这是咱们新款羽绒服的透气孔设计，我对着它吹气，能明显看到空气流通，运动出汗也不会闷！",
+                    vip: "VIP家人们，看这个限量版的包装，非常精美，送人自用两相宜！"
+                },
+                burst: {
+                    new: "刚被平台推流，给新进来的家人们演示一下！这是咱们羽绒服的防水性能，水倒上去直接滑落，而且非常轻便，我一只手就能提起来！今天直播间699，赶紧抢！",
+                    old: "流量爆了！老粉们帮忙见证，这是咱们新款羽绒服的防洗性能，我现在水洗，洗完依然蓬松！老客专享5折，只有30件库存！",
+                    vip: "流量突然来了！VIP家人们抓紧看细节，咱们这款羽绒服的手工缝制工艺，每一针都非常精细，彰显品质！"
+                }
+            },
+            trust: {
+                high: {
+                    new: "家人们放心拍，咱们是鹏泰电商官方直播间，所有产品都有质量保证，7天无理由退换，运费险也给大家安排上了！",
+                    old: "老粉们都知道咱们的品质，已经有10万+老客回购，今天这款新款羽绒服品质更上一层楼，放心下单！",
+                    vip: "VIP家人们，咱们的产品都是经过严格检测的，这款羽绒服获得了国际认证，品质有保障！"
+                },
+                normal: {
+                    new: "家人们可以放心购买，咱们是正规品牌，所有产品都通过了质检，而且有完善的售后服务！",
+                    old: "老粉们对咱们的品质都很了解，已经有5万+老客购买了咱们的羽绒服，反馈都非常好！",
+                    vip: "VIP家人们，咱们的产品都是采用顶级材料，由经验丰富的师傅手工制作，品质值得信赖！"
+                },
+                low: {
+                    new: "给大家看一下咱们的质检报告，各项指标都远超国家标准，家人们可以放心购买！",
+                    old: "老粉们都知道咱们的口碑，已经有3万+老客购买了咱们的羽绒服，没有一个说不好的！",
+                    vip: "VIP家人们，咱们的定制款都是一对一服务，有任何问题随时联系专属客服，全程为您解决！"
+                },
+                burst: {
+                    new: "刚被平台推流，新进来的家人们放心拍！咱们是鹏泰电商官方直播间，所有产品都有质量保证，7天无理由退换，运费险也给大家安排上了！",
+                    old: "流量爆了！老粉们帮忙证明，咱们的品质一直都很可靠，已经有10万+老客回购，今天这款新款更厉害！",
+                    vip: "流量突然来了！VIP家人们抓紧下单，咱们的限量款都是限量发售，卖完就没有了，而且品质绝对有保障！"
+                }
+            },
+            promotion: {
+                high: {
+                    new: "家人们注意了！原价1299的羽绒服，今天直播间只要699！前50名下单立减100，再送价值299的围巾！库存只有200件，已经卖出80件了！",
+                    old: "老粉们福利来了！新款羽绒服会员专享8折，只要599！下单就送去年爆款围巾，数量有限先到先得！",
+                    vip: "VIP专属优惠！这款限量羽绒服全球仅500件，直播间专属9折，前20名下单送定制皮箱，只有10个名额了！"
+                },
+                normal: {
+                    new: "今天直播间福利多多！这款羽绒服原价1299，今天只要799，比官网便宜300！关注主播再减50，只要749！",
+                    old: "老粉们专享福利！新款羽绒服老客专享满200减30，只要699！还送一条围巾，多买多送！",
+                    vip: "VIP家人们专属优惠！这款定制款羽绒服直播间专属8折，只要1599！下单送高级护理套装！"
+                },
+                low: {
+                    new: "刚开播，给大家上福利！这款羽绒服日常价1299，今天直播间799，关注主播再减50，只要749！前30名下单再送手套！",
+                    old: "老粉们，人少咱们福利不少！新款羽绒服老客专享699，下单送围巾，前10名额外送手套！",
+                    vip: "VIP家人们专属优惠！这款限量版羽绒服直播间专属8.5折，只要1799！下单送高级护理套装，数量有限！"
+                },
+                burst: {
+                    new: "刚被平台推流，给新进来的家人们上大福利！这款羽绒服日常价1299，今天直播间699，前50名下单再送围巾，库存只有50件了，赶紧抢！",
+                    old: "流量爆了！老粉们帮忙分享直播间，新款羽绒服老客专享5折，只有30件库存，抢完恢复原价！",
+                    vip: "流量突然来了！VIP家人们抓紧时间，限量款羽绒服只剩10件，下单额外送价值399的护理套装，手慢无！"
+                }
+            },
+            interactive: {
+                high: {
+                    new: "家人们喜欢这款羽绒服吗？喜欢的扣‘666’！点赞到1万马上抽3位家人送围巾！左上角福袋还有2分钟开奖，参与一下！",
+                    old: "老粉们觉得这款羽绒服怎么样？觉得好的扣‘好’！点赞到5000马上抽5位家人送手套！",
+                    vip: "VIP家人们对这款限量版还满意吗？满意的扣‘满意’！点赞到3000马上抽2位家人送定制皮箱！"
+                },
+                normal: {
+                    new: "家人们觉得这款羽绒服好看吗？好看的扣‘好看’！点赞到5000马上抽2位家人送围巾！",
+                    old: "老粉们觉得这款羽绒服比去年的怎么样？觉得好的扣‘1’！点赞到3000马上抽3位家人送手套！",
+                    vip: "VIP家人们对这款定制款有什么建议？可以在公屏留言！点赞到2000马上抽1位家人送高级护理套装！"
+                },
+                low: {
+                    new: "家人们喜欢这款羽绒服的哪个颜色？扣数字告诉我！点赞到3000马上抽1位家人送围巾！",
+                    old: "老粉们觉得这款羽绒服的袖口设计怎么样？觉得好的扣‘好’！点赞到2000马上抽2位家人送手套！",
+                    vip: "VIP家人们对这款限量版的包装还满意吗？满意的扣‘满意’！点赞到1000马上抽1位家人送定制皮箱！"
+                },
+                burst: {
+                    new: "刚被平台推流，新进来的家人们喜欢这款羽绒服吗？喜欢的扣‘666’！点赞到2万马上抽5位家人送围巾！左上角福袋还有1分钟开奖！",
+                    old: "流量爆了！老粉们帮忙点赞分享，觉得这款羽绒服好的扣‘好’！点赞到1万马上抽10位家人送手套！",
+                    vip: "流量突然来了！VIP家人们抓紧点赞，对这款限量版满意的扣‘满意’！点赞到5000马上抽3位家人送定制皮箱！"
+                }
+            },
+            ending: {
+                high: {
+                    new: "家人们，今天的直播接近尾声了！还没下单的抓紧时间，库存不多了！明天同一时间继续给大家带来更多福利，记得点关注和开播提醒哦！",
+                    old: "老粉们，今天的新款羽绒服非常受欢迎，库存已经不多了！明天给大家带来更多新款，记得准时来！",
+                    vip: "VIP家人们，今天的限量款已经卖出大半，还剩最后几件！感谢大家的支持，明天给VIP们准备了专属福利！"
+                },
+                normal: {
+                    new: "家人们，今天的直播就要结束了！感谢大家的陪伴，没抢到的家人们明天还有机会，记得点关注哦！",
+                    old: "老粉们，今天的新款羽绒服反响很好，感谢大家的支持！明天继续给大家带来福利，记得准时来！",
+                    vip: "VIP家人们，今天的定制款非常成功，感谢大家的信任！明天还有更多定制款，记得关注开播提醒！"
+                },
+                low: {
+                    new: "家人们，今天的直播快要结束了！感谢大家的陪伴，没抢到的家人们不要灰心，明天同一时间继续给大家上福利！",
+                    old: "老粉们，今天的新款羽绒服虽然人不多，但福利还是很给力的！明天给大家带来更多新款，记得来哦！",
+                    vip: "VIP家人们，今天的限量版还有几件，感兴趣的可以私信我！明天给VIP们准备了专属惊喜！"
+                },
+                burst: {
+                    new: "刚被平台推流，感谢新进来的家人们！今天的直播马上结束了，没抢到的家人们明天同一时间继续，记得点关注和开播提醒！",
+                    old: "流量爆了！感谢老粉们的支持，今天的新款羽绒服非常受欢迎，库存已经不多了！明天给大家带来更多福利！",
+                    vip: "流量突然来了！感谢VIP家人们的支持，今天的限量款已经卖出大半，还剩最后几件！明天还有更多限量款！"
+                }
+            }
+        };
+
+        // 执行时间配置
+        const moduleDurations = {
+            intro: "0-1分钟",
+            painPoint: "1-2分钟",
+            product: "2-3分钟",
+            comparison: "3-3.5分钟",
+            demo: "3.5-4分钟",
+            trust: "4-4.5分钟",
+            promotion: "4.5-5分钟",
+            interactive: "5-5.5分钟",
+            ending: "5.5-6分钟"
+        };
+
+        // 互动动作配置
+        const moduleActions = {
+            intro: "挥手打招呼，指向屏幕左上角关注按钮",
+            painPoint: "展示产品，做出冷/不舒服的表情然后转为满意",
+            product: "举起产品展示，手指向购物车",
+            comparison: "左右对比两件产品，突出优势",
+            demo: "进行产品功能演示，展示效果",
+            trust: "展示质检报告或用户评价截图",
+            promotion: "手指向库存计数器，快速翻动订单截图",
+            interactive: "看向镜头右侧（模拟看公屏），手势引导点赞",
+            ending: "微笑挥手，指向屏幕左上角关注和开播提醒按钮"
+        };
+
+        // 生成脚本
+        document.getElementById('generateScriptBtn').addEventListener('click', function() {
+            // 获取用户选择
+            const platform = document.getElementById('platform').value;
+            const trafficType = document.getElementById('trafficType').value;
+            const contentType = document.getElementById('contentType').value;
+            const targetAudience = document.getElementById('targetAudience').value;
+            const style = document.querySelector('input[name="style"]:checked').value;
+            
+            // 获取选中的模块
+            const selectedModules = Array.from(document.querySelectorAll('#moduleSelector input[type="checkbox"]:checked'))
+                .map(checkbox => checkbox.value);
+            
+            // 获取产品和权益信息
+            const mainProduct = document.getElementById('mainProduct').value || "羽绒服";
+            const mainProductFeatures = document.getElementById('mainProductFeatures').value || "轻便,保暖,防水";
+            const secondaryProduct = document.getElementById('secondaryProduct').value || "围巾";
+            const secondaryProductFeatures = document.getElementById('secondaryProductFeatures').value || "百搭,柔软";
+            const couponValue = document.getElementById('couponValue').value || "50";
+            const couponCondition = document.getElementById('couponCondition').value || "无门槛";
+            const giftName = document.getElementById('giftName').value || "围巾";
+            const giftCondition = document.getElementById('giftCondition').value || "下单即送";
+            const discount = document.getElementById('discount').value || "7折";
+            const discountTime = document.getElementById('discountTime').value || "前30分钟";
+            
+            // 更新脚本信息
+            document.getElementById('infoPlatform').textContent = platform;
+            document.getElementById('infoTraffic').textContent = {
+                high: "高流量",
+                normal: "正常流量",
+                low: "低流量",
+                burst: "突发流量"
+            }[trafficType];
+            document.getElementById('infoContent').textContent = {
+                newProduct: "新品推广",
+                clearance: "清仓促销",
+                brand: "品牌宣传"
+            }[contentType];
+            document.getElementById('infoAudience').textContent = {
+                new: "新用户",
+                old: "老用户",
+                vip: "高净值用户"
+            }[targetAudience];
+            document.getElementById('infoStyle').textContent = {
+                natural: "自然不夸张",
+                professional: "专业可靠"
+            }[style];
+            document.getElementById('infoTime').textContent = new Date().toLocaleString();
+            
+            // 生成脚本内容
+            const tableBody = document.getElementById('scriptTableBody');
+            tableBody.innerHTML = '';
+            
+            if (selectedModules.length === 0) {
+                tableBody.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="5" class="px-6 py-12 text-neutral-500">请至少选择一个脚本模块</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            selectedModules.forEach(module => {
+                // 获取基础话术
+                let baseScript = moduleScripts[module]?.[trafficType]?.[targetAudience] || "";
+                
+                // 替换产品和权益信息
+                let script = baseScript
+                    .replace(/羽绒服/g, mainProduct)
+                    .replace(/围巾/g, secondaryProduct)
+                    .replace(/50/g, couponValue)
+                    .replace(/无门槛/g, couponCondition)
+                    .replace(/前50名/g, discountTime)
+                    .replace(/7折/g, discount)
+                    .replace(/下单即送/g, giftCondition);
+                
+                // 权益提示
+                let promotionText = "";
+                if (module === "promotion" || module === "product") {
+                    promotionText = `${couponValue}元优惠券（${couponCondition}），${giftName}（${giftCondition}），${discount}（${discountTime}）`;
+                }
+                
+                // 添加行
+                const row = tableBody.insertRow();
+                row.className = "hover:bg-neutral-50 transition-colors";
+                
+                const moduleCell = row.insertCell();
+                moduleCell.className = "px-6 py-4 whitespace-nowrap";
+                moduleCell.innerHTML = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">${getModuleName(module)}</span>`;
+                
+                const scriptCell = row.insertCell();
+                scriptCell.className = "px-6 py-4";
+                scriptCell.textContent = script;
+                
+                const timeCell = row.insertCell();
+                timeCell.className = "px-6 py-4 whitespace-nowrap";
+                timeCell.textContent = moduleDurations[module] || "-";
+                
+                const actionCell = row.insertCell();
+                actionCell.className = "px-6 py-4";
+                actionCell.textContent = moduleActions[module] || "-";
+                
+                const promotionCell = row.insertCell();
+                promotionCell.className = "px-6 py-4";
+                promotionCell.textContent = promotionText;
+            });
+        });
+        
+        // 导出Excel
+        document.getElementById('exportExcelBtn').addEventListener('click', function() {
+            const table = document.getElementById('scriptTable');
+            if (table.rows.length <= 1) {
+                alert('没有可导出的脚本内容');
+                return;
+            }
+            
+            const wb = XLSX.utils.table_to_book(table);
+            const fileName = `直播脚本_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        });
+        
+        // 打印
+        document.getElementById('printBtn').addEventListener('click', function() {
+            window.print();
+        });
+        
+        // 帮助模态框
+        document.getElementById('helpBtn').addEventListener('click', function() {
+            document.getElementById('helpModal').classList.remove('hidden');
+        });
+        
+        document.getElementById('closeHelpModal').addEventListener('click', function() {
+            document.getElementById('helpModal').classList.add('hidden');
+        });
+        
+        document.getElementById('confirmHelpModal').addEventListener('click', function() {
+            document.getElementById('helpModal').classList.add('hidden');
+        });
+        
+        // 获取模块名称
+        function getModuleName(module) {
+            const moduleNames = {
+                intro: "开场模块",
+                painPoint: "痛点模块",
+                product: "产品模块",
+                comparison: "对比模块",
+                demo: "演示模块",
+                trust: "信任模块",
+                promotion: "促销模块",
+                interactive: "互动模块",
+                ending: "结尾模块"
+            };
+            return moduleNames[module] || module;
+        }
+    </script>
+</body>
+</html>
+    
